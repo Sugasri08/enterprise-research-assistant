@@ -1,0 +1,27 @@
+Acme Robotics Inc. — FY2025 Annual Report Summary (Sample Document)
+
+Overview
+Acme Robotics Inc. is a mid-cap industrial automation company specializing in
+warehouse robotics and AI-driven logistics software. Founded in 2014, the
+company operates in 12 countries with headquarters in Austin, Texas.
+
+Financial Highlights
+- Revenue: $842M, up 18% year-over-year
+- Net income: $96M, up 22% year-over-year
+- R&D spending: $134M (15.9% of revenue), focused on AI-driven picking robots
+- Cash and equivalents: $310M
+
+Strategic Priorities for FY2026
+1. Expand AI-driven inventory forecasting into the European market
+2. Launch a next-generation autonomous picking robot, "ArmLine 4"
+3. Deepen partnerships with third-party logistics providers
+4. Reduce unit production costs by 10% through supply chain consolidation
+
+Risks Disclosed
+- Dependence on semiconductor supply chains for robotics components
+- Increasing competition from larger automation incumbents
+- Regulatory uncertainty around AI safety standards in the EU
+
+This is a placeholder sample document for testing the Document Research
+(RAG) module. Replace it with a real client annual report or research PDF
+before demoing the assistant.

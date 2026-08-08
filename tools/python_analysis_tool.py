@@ -1,39 +1,42 @@
 """
-Module 10 — Python Tool.
-Lets the agent compute statistics and build comparison tables,
-e.g. 'Compare Revenue Growth' across companies.
+Module 4 — Python Analysis Tool.
+Executes comparisons on financial or operational metrics.
 """
 import json
-import statistics
+from typing import Union, Dict
 from langchain_core.tools import tool
 
 
 @tool
-def compare_metrics(data_json: str) -> str:
+def compare_metrics(metric: str, values: Union[Dict[str, float], str]) -> str:
     """
-    Compare a numeric metric across multiple entities and return a
-    markdown table plus basic stats (mean, min, max, stdev).
+    Compare financial or operational metrics across multiple companies or entities.
 
-    Input must be a JSON string shaped like:
-    {"metric": "Revenue Growth %", "values": {"Google": 12.1, "Microsoft": 15.4, "Amazon": 11.0}}
+    Args:
+        metric: Name of the metric being compared (e.g., 'Gross Margin %', 'Revenue Growth').
+        values: A dictionary mapping entity names to numerical values (e.g., {"Apple": 38.0, "Microsoft": 70.3}), 
+                or a valid JSON string representing that dictionary.
     """
     try:
-        payload = json.loads(data_json)
-        metric = payload.get("metric", "Metric")
-        values = payload.get("values", {})
-        if not values:
-            return "No values provided to compare."
+        # Handle string input if the model passes values as a JSON string
+        if isinstance(values, str):
+            try:
+                values = json.loads(values)
+            except json.JSONDecodeError:
+                return f"Error: Could not parse values JSON string: {values}"
 
-        nums = list(values.values())
-        rows = "\n".join(f"| {name} | {val} |" for name, val in values.items())
-        table = f"| Entity | {metric} |\n|---|---|\n{rows}"
+        if not isinstance(values, dict) or not values:
+            return "No valid key-value pairs provided for metric comparison."
 
-        stats = (
-            f"Mean: {statistics.mean(nums):.2f}\n"
-            f"Max: {max(values, key=values.get)} ({max(nums):.2f})\n"
-            f"Min: {min(values, key=values.get)} ({min(nums):.2f})\n"
-            f"Std dev: {statistics.pstdev(nums):.2f}" if len(nums) > 1 else ""
-        )
-        return f"{table}\n\n{stats}"
+        lines = [f"**Comparison: {metric}**\n"]
+        
+        # Sort values in descending order
+        sorted_entities = sorted(values.items(), key=lambda item: item[1], reverse=True)
+        
+        for rank, (entity, val) in enumerate(sorted_entities, 1):
+            lines.append(f"{rank}. **{entity}**: {val}")
+
+        return "\n".join(lines)
+
     except Exception as e:
-        return f"Could not parse comparison input: {e}"
+        return f"Error analyzing metrics: {e}"

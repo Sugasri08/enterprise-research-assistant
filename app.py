@@ -1,7 +1,5 @@
 """
 Enterprise Research Assistant — Streamlit entrypoint.
-Wires together chat (Module 1), RAG upload (Module 4), structured
-reports (Module 6), parallel research (Module 7), and memory (Module 9).
 """
 import os
 import tempfile
@@ -17,12 +15,31 @@ from reports.exporter import to_txt_bytes, to_pdf_bytes
 st.set_page_config(page_title="Enterprise Research Assistant", layout="wide")
 init_short_term_memory()
 
-# ---------------------------------------------------------------- Sidebar
+# Sidebar Configuration
 with st.sidebar:
     st.header("Client & knowledge base")
 
-    client_name = st.text_input("Client name", value=st.session_state.get("client_name", "default"))
-    st.session_state.client_name = client_name
+    known_clients = list_clients()
+    
+    selected_client = st.selectbox(
+        "Select or create client",
+        options=known_clients + ["+ Create New Client"] if known_clients else ["default"],
+        index=0
+    )
+
+    if selected_client == "+ Create New Client":
+        client_name = st.text_input("New Client name", value="new_client")
+    else:
+        client_name = selected_client
+
+    if st.session_state.get("client_name") != client_name:
+        st.session_state.client_name = client_name
+        saved_history = load_client_profile(client_name)
+        if saved_history:
+            st.session_state.messages = saved_history.get("chat_history", [])
+        else:
+            st.session_state.messages = []
+        st.rerun()
 
     st.subheader("Upload documents")
     uploaded_files = st.file_uploader(
@@ -47,14 +64,7 @@ with st.sidebar:
         clear_history()
         st.rerun()
 
-    st.subheader("Previous clients")
-    known_clients = list_clients()
-    if known_clients:
-        st.write(", ".join(known_clients))
-    else:
-        st.caption("No saved sessions yet.")
-
-# ---------------------------------------------------------------- Main tabs
+# Main Navigation
 tab_chat, tab_report, tab_parallel = st.tabs(["Chat", "Generate report", "Compare companies"])
 
 with tab_chat:
@@ -79,7 +89,6 @@ with tab_chat:
         else:
             st.markdown("<h3 style='margin-bottom: 1.5rem;'>Research Chat</h3>", unsafe_allow_html=True)
 
-        # Render message history
         for msg in history:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
@@ -93,7 +102,7 @@ with tab_chat:
             with st.chat_message("assistant"):
                 with st.status("Gathering intelligence and running tools...", expanded=True) as status:
                     try:
-                        prior_turns = get_history()[:-1]  # Exclude current user message
+                        prior_turns = get_history()[:-1]
                         reply = chat(user_input, chat_history=prior_turns)
                         status.update(label="Research completed", state="complete", expanded=False)
                     except Exception as e:

@@ -1,55 +1,50 @@
 """
-Central configuration for the Enterprise Research Assistant.
-Loads environment variables and exposes shared model instances.
-
-Chat/agent model: Groq (llama-3.3-70b-versatile) — very high free-tier
-throughput, good tool-calling support.
-Embeddings: Google Gemini — Groq has no embeddings API, and Gemini's
-free embedding quota is separate from (and much higher than) its chat
-quota, so this stays zero-cost.
+Configuration module for LLM selection, embeddings, environment variables, and directory paths.
 """
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
+# Force load variables from .env
 load_dotenv(override=True)
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+# Base directory of the project
+BASE_DIR = Path(__file__).resolve().parent
+
+# Directory Paths
+SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
+DATA_DIR = os.path.join(BASE_DIR, "data")
+CHROMA_DIR = os.path.join(BASE_DIR, "chroma_db")
+
+# Ensure required storage directories exist
+os.makedirs(SESSIONS_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(CHROMA_DIR, exist_ok=True)
+
+# API Keys
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-CHROMA_DIR = os.path.join(os.path.dirname(__file__), "data", "chroma_db")
-SESSIONS_DIR = os.path.join(os.path.dirname(__file__), "data", "sessions")
+try:
+    from langchain_huggingface import HuggingFaceEmbeddings
+except ImportError:
+    from langchain_community.embeddings import HuggingFaceEmbeddings
 
 
-def get_llm(temperature: float = 0.3) -> ChatGroq:
-    """
-    Returns the shared chat/agent LLM. Uses Groq's free tier
-    (no credit card required, high requests-per-day limit).
-    """
-    if not GROQ_API_KEY:
-        raise EnvironmentError(
-            "GROQ_API_KEY is not set. Copy .env.example to .env and add your "
-            "free key from https://console.groq.com/keys"
-        )
+def get_embeddings():
+    """Returns an open-source sentence-transformers embedding model for ChromaDB vector store."""
+    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
+
+def get_llm(temperature: float = 0.7) -> ChatGroq:
+    """Returns ChatGroq model instance targeting llama-3.1-8b-instant."""
+    if not GROQ_API_KEY or not GROQ_API_KEY.startswith("gsk_"):
+        raise ValueError("GROQ_API_KEY is missing or invalid in your .env file.")
+
     return ChatGroq(
         model="llama-3.1-8b-instant",
-        api_key=GROQ_API_KEY,
         temperature=temperature,
-        model_kwargs={"parallel_tool_calls": False},
+        max_retries=5,
+        groq_api_key=GROQ_API_KEY,
     )
-
-
-def get_embeddings() -> GoogleGenerativeAIEmbeddings:
-    """
-    Returns the shared embeddings model for RAG (Module 4).
-    Uses Gemini since Groq doesn't offer an embeddings endpoint.
-    """
-    if not GOOGLE_API_KEY:
-        raise EnvironmentError(
-            "GOOGLE_API_KEY is not set. RAG/document search needs a free Gemini "
-            "key (separate from Groq) for embeddings — get one at "
-            "https://aistudio.google.com/app/apikey and add it to .env"
-        )
-    return GoogleGenerativeAIEmbeddings(model="gemini-embedding-001", google_api_key=GOOGLE_API_KEY)
